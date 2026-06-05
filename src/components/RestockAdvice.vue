@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { nextTick, ref, watch } from 'vue'
 import { Truck, AlertCircle, CheckCircle, Clock } from 'lucide-vue-next'
 import { useBoard } from '@/composables/useBoard'
 
-const { restockSuggestions, warehouseList } = useBoard()
+const { restockSuggestions, warehouseList, selectedSkuId, selectSku } = useBoard()
+
+const cardRefs = ref<Record<string, HTMLDivElement>>({})
 
 const priorityMap: Record<string, { label: string; cls: string }> = {
   urgent: { label: '紧急', cls: 'badge-danger' },
@@ -21,24 +24,46 @@ const supplierDotMap: Record<string, { dot: string; badge?: string; badgeCls?: s
 function warehouseName(id: string) {
   return warehouseList.value.find(w => w.id === id)?.name ?? id
 }
+
+watch(selectedSkuId, async (id) => {
+  if (!id) return
+  const match = restockSuggestions.value.find(r => r.skuId === id)
+  if (match && cardRefs.value[match.id]) {
+    await nextTick()
+    cardRefs.value[match.id]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }
+})
 </script>
 
 <template>
   <div class="card">
-    <div class="flex items-center gap-2 mb-4">
-      <Truck class="w-5 h-5 text-info" />
-      <h2 class="text-lg font-semibold font-display" style="color: var(--color-text)">补货建议</h2>
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-2">
+        <Truck class="w-5 h-5 text-info" />
+        <h2 class="text-lg font-semibold font-display" style="color: var(--color-text)">补货建议</h2>
+      </div>
+      <button
+        v-if="selectedSkuId"
+        class="text-xs text-text-muted hover:text-info transition px-2 py-1 rounded"
+        style="background: var(--color-surface-light)"
+        @click="selectSku(null)"
+      >
+        取消选中
+      </button>
     </div>
     <div class="space-y-3 max-h-[480px] overflow-y-auto pr-1">
       <div
         v-for="item in restockSuggestions"
         :key="item.id"
-        class="p-3 rounded-lg border transition-colors"
-        style="background: var(--color-surface-light); border-color: var(--color-border)"
+        :ref="(el) => { if (el) cardRefs[item.id] = el as HTMLDivElement }"
+        class="p-3 rounded-lg border transition-all cursor-pointer"
+        :class="selectedSkuId === item.skuId ? 'ring-1 ring-info border-info' : ''"
+        :style="selectedSkuId === item.skuId ? 'background: rgba(59,130,246,0.1); border-color: var(--color-info)' : 'background: var(--color-surface-light); border-color: var(--color-border)'"
+        @click="selectSku(item.skuId)"
       >
         <div class="flex items-center justify-between mb-2">
           <div>
-            <span class="font-semibold text-sm" style="color: var(--color-text)">{{ item.skuName }}</span>
+            <span class="font-semibold text-sm" :class="selectedSkuId === item.skuId ? 'text-info' : ''" style="color: var(--color-text)">{{ item.skuName }}</span>
             <span class="ml-2 text-xs text-text-muted">{{ warehouseName(item.warehouseId) }}</span>
           </div>
           <span class="badge" :class="priorityMap[item.priority]?.cls">

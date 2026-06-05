@@ -18,6 +18,7 @@ import {
 
 const selectedWarehouseId = ref<string | null>(null)
 const selectedRiskTab = ref<'out_of_stock' | 'critical' | 'low' | 'normal' | 'all'>('all')
+const selectedSkuId = ref<string | null>(null)
 const warehouseList = ref<Warehouse[]>([...mockWarehouses])
 const skuList = ref<SKU[]>([...mockSKUs])
 const supplierList = ref<Supplier[]>([...mockSuppliers])
@@ -72,10 +73,16 @@ const supplierMissingSKUs = computed(() =>
 
 function selectWarehouse(id: string | null) {
   selectedWarehouseId.value = id
+  selectedSkuId.value = null
+}
+
+function selectSku(id: string | null) {
+  selectedSkuId.value = selectedSkuId.value === id ? null : id
 }
 
 function setRiskTab(tab: typeof selectedRiskTab.value) {
   selectedRiskTab.value = tab
+  selectedSkuId.value = null
 }
 
 function setTrendPeriod(p: 7 | 30) {
@@ -144,6 +151,7 @@ export function useBoard() {
   return {
     selectedWarehouseId,
     selectedRiskTab,
+    selectedSkuId,
     trendPeriod,
     warehouseList,
     skuList,
@@ -156,6 +164,7 @@ export function useBoard() {
     pendingAlertCount,
     supplierMissingSKUs,
     selectWarehouse,
+    selectSku,
     setRiskTab,
     setTrendPeriod,
     resolveAlert,

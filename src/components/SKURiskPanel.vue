@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { nextTick, ref, watch } from 'vue'
 import { AlertTriangle, Package, Shield } from 'lucide-vue-next'
 import { useBoard } from '@/composables/useBoard'
 
-const { filteredSKUs, riskCounts, selectedRiskTab, setRiskTab } = useBoard()
+const { filteredSKUs, riskCounts, selectedRiskTab, selectedSkuId, setRiskTab, selectSku } = useBoard()
+
+const rowRefs = ref<Record<string, HTMLTableRowElement>>({})
 
 const tabs = [
   { key: 'all' as const, label: '全部', color: '' },
@@ -31,13 +34,30 @@ function tabCount(key: string) {
   if (key === 'all') return filteredSKUs.value.length
   return riskCounts.value[key as keyof typeof riskCounts.value]
 }
+
+watch(selectedSkuId, async (id) => {
+  if (id && rowRefs.value[id]) {
+    await nextTick()
+    rowRefs.value[id]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }
+})
 </script>
 
 <template>
   <div class="card">
-    <div class="flex items-center gap-2 mb-4">
-      <AlertTriangle class="w-5 h-5 text-warning" />
-      <h2 class="text-lg font-semibold font-display" style="color: var(--color-text)">SKU 风险面板</h2>
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-2">
+        <AlertTriangle class="w-5 h-5 text-warning" />
+        <h2 class="text-lg font-semibold font-display" style="color: var(--color-text)">SKU 风险面板</h2>
+      </div>
+      <button
+        v-if="selectedSkuId"
+        class="text-xs text-text-muted hover:text-info transition px-2 py-1 rounded"
+        style="background: var(--color-surface-light)"
+        @click="selectSku(null)"
+      >
+        取消选中
+      </button>
     </div>
 
     <div class="flex border-b" style="border-color: var(--color-border)">
@@ -74,14 +94,22 @@ function tabCount(key: string) {
           <tr
             v-for="sku in filteredSKUs"
             :key="sku.id"
-            class="border-t transition-colors"
-            :class="sku.currentStock === 0 ? 'bg-red-500/10' : 'hover:bg-surface-light'"
+            :ref="(el) => { if (el) rowRefs[sku.id] = el as HTMLTableRowElement }"
+            class="border-t transition-all cursor-pointer"
+            :class="[
+              selectedSkuId === sku.id
+                ? 'ring-1 ring-info bg-info/10'
+                : sku.currentStock === 0
+                  ? 'bg-red-500/10 hover:bg-red-500/15'
+                  : 'hover:bg-surface-light',
+            ]"
             style="border-color: var(--color-border)"
+            @click="selectSku(sku.id)"
           >
             <td class="px-3 py-2.5">
               <div class="flex items-center gap-2">
                 <Package class="w-3.5 h-3.5 text-text-muted shrink-0" />
-                <span class="font-medium" style="color: var(--color-text)">{{ sku.name }}</span>
+                <span class="font-medium" :class="selectedSkuId === sku.id ? 'text-info' : ''" style="color: var(--color-text)">{{ sku.name }}</span>
               </div>
             </td>
             <td class="px-3 py-2.5 text-text-muted">{{ sku.category }}</td>
